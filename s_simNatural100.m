@@ -31,6 +31,7 @@ nX = length(xVec);
 nY = length(yVec);
        
 % Define camera models
+
 cameras = {'AptinaMT9M031','AptinaMT9M131',...
            'Canon1DMarkIII','Canon5DMarkII','Canon20D','Canon40D','Canon50D','Canon60D','Canon300D','Canon500D','Canon600D',...
            'HasselbladH2',...
@@ -47,7 +48,7 @@ nCameras = length(cameras);
 
 %% Camera simulation
 
-channelRawLin = zeros(nX,nY,10,11,3,nChannels+1,nCameras);
+measurement = cell(nX,nY,nCameras);
 for xx=1:nX
     for yy=1:nY
         
@@ -57,6 +58,7 @@ for xx=1:nX
         end
         
         for cam=1:nCameras
+            
             sensor = sensorCreate('bayer (rggb)');
             sensor = sensorSet(sensor,'wave',wave);
             sensor = sensorSet(sensor,'noise flag',0);
@@ -66,6 +68,9 @@ for xx=1:nX
             cameraResp(isnan(cameraResp)) = 0;
             sensor = sensorSet(sensor,'filter transmissivities',cameraResp);
             
+            measurement{xx,yy,cam} = renderData(wave, sensor, spd, flashNorm, 'compact',true);
+            
+            %{
             
             rawLin = zeros(10,11,3,nChannels+1);
             for i=1:(nChannels + 1)
@@ -130,11 +135,19 @@ for xx=1:nX
             rawLin = rawLin/max(rawLin(:));
             channelRawLin(xx,yy,:,:,:,:,cam) = rawLin;
             
+            %}
+            
+            % Clear ISET data
+            vcDeleteSomeObjects('scene',1:length(vcGetObjects('scene'))); 
+            vcDeleteSomeObjects('oi',1:length(vcGetObjects('oi'))); 
+            vcDeleteSomeObjects('sensor',1:length(vcGetObjects('sensor'))); 
+            vcDeleteSomeObjects('ip',1:length(vcGetObjects('ip'))); 
+            
         end
 
     end
 end
 
 %%
-fName = fullfile(compMultispFlashRootPath,'Results','simNatural100.mat');
+fName = fullfile(cmfRootPath,'Results','simNatural100V2.mat');
 save(fName);

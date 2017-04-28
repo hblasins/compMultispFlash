@@ -11,7 +11,7 @@ clc;
 destPath = [];
 % destPath = fullfile(cmfRootPath,'..','Figures');
 
-fName = fullfile(cmfRootPath,'Results','reflVariability.mat');
+fName = fullfile(cmfRootPath,'Results','numPatches.mat');
 load(fName);
 
 

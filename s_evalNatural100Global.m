@@ -1,3 +1,11 @@
+% This script evaluates the computational multispectral flash using the
+% Natural100 patches. It produces an image under an illuminant with a
+% specified CIE xy coordinates, estimates the image under the complementary
+% light and generates the image of the scene image under the desired 
+% illuminant to compare.
+%
+% Copyright, Henryk Blasinski 2017.
+
 close all;
 clear all;
 clc;
@@ -9,7 +17,7 @@ set(groot,'defaultAxesColorOrder',[1 0 0; 0 1 0; 0 0 1]);
 wave = 400:5:700; wave = wave(:);
 nWaves = length(wave);
 
-fName = fullfile(slRootPath,'Parameters','ximeaLights');
+fName = fullfile(cmfRootPath,'Parameters','ximeaLights');
 flashSpd = ieReadSpectra(fName,wave);
 flashSpd = Energy2Quanta(wave,flashSpd);
 flashNorm = flashSpd/max(flashSpd(:));
@@ -50,117 +58,39 @@ for xx=0:0.2:1
             plot(xyz(1)/sum(xyz),xyz(2)/sum(xyz),'k+','lineWidth',2,'markerSize',10);
         end
         
-                
-        for i=1:(nChannels + 1)
-            
-            if i==1
-                name = 'Ambient';
-                
-                scene = sceneCreateNatural100();
-                scene = sceneSet(scene,'wavelength',wave);
-                illSpd = spd;
-            else
-                name = sprintf('Ambient + LED%i',i-1);
-                illSpd = spd + flashNorm(:,i-1);
-            end
-            
-            illSpd = illSpd*10^15;
-            
-            scene = sceneAdjustIlluminant(scene,Quanta2Energy(wave,illSpd),0);
-            % ieAddObject(scene);
-            % sceneWindow;
-            
-            oi = oiCompute(oiCreate,scene);
-            oi = oiSet(oi,'name',name);
-            % ieAddObject(oi);
-            % oiWindow();
-            
-            if i==1
-                sensor = sensorSet(sensor,'pixel size', oiGet(oi,'spatial resolution'));
-                sensor = sensorSetSizeToFOV(sensor,[sceneGet(scene,'hfov') sceneGet(scene,'vfov')],scene,oi);
-                sensor = pixelCenterFillPD(sensor,1);
-            end
-            sensor = sensorSet(sensor,'name',name);
-            sensor = sensorCompute(sensor,oi);
-            
-            [cg, co] = sensorGainAndOffsetV2(0.5,oi,sensor);
-            
-            if i==1
-                tmp = sensorGet(sensor,'volts');
-                rawLin = zeros([size(tmp),nChannels + 1]);
-            end
-            
-            rawLin(:,:,i) = sensorGet(sensor,'volts')/cg;
-            
-            % vcAddObject(sensor);
-            % sensorWindow();
-            
-            
-            ip = ipCreate();
-            ip = ipCompute(ip,sensor);
-            ip = ipSet(ip,'name',name);
-            % ieAddObject(ip);
-            % ipWindow();
-            
-        end
+       
         
+        measurement = renderData(wave, sensor, spd, flashNorm);
         
-        % Estimate channel only images from the difference between flash and no-flash
-        channelRawLin = rawLin;
-        for i=2:(nChannels + 1)
-            channelRawLin(:,:,i) = max(channelRawLin(:,:,i) - channelRawLin(:,:,1),0);
-        end
-        
-        channelRawLin = channelRawLin/max(channelRawLin(:));
+        channelRawLin = measurement.raw.data;
         
         %% Ambient estimate
         
-        lambda = 0;
-        R = [eye(nWaves-1) zeros(nWaves-1,1)] - [zeros(nWaves-1,1) eye(nWaves-1)];
+        [ ambientEst, ambientWghts, ambientPredictions ] = globalAmbientEst( measurement.patch.ambient, measurement.patch.led, flashNorm, 'alpha',0.1 );
         
-        ambientAppearance = channelRawLin(:,:,1);
-        cvx_begin
-        variables ambientApproxWghts(nChannels,1)
         
-        approx = 0;
-        for i=1:nChannels
-            approx = approx + squeeze(channelRawLin(:,:,i+1))*ambientApproxWghts(i);
-        end
-        
-        minimize sum(norms(ambientAppearance - approx,2,1)) + lambda * norm(R*flashNorm*ambientApproxWghts,2)
-        subject to
-        flashNorm*ambientApproxWghts >= 0
-        cvx_end
-        
-        err = sqrt(mean((ambientAppearance(:) - approx(:)).^2));
+        err = sqrt(mean((measurement.patch.ambient(:) - ambientPredictions(:)).^2));
         
         figure(resFig);
         subplot(2,3,2);
         hold on; grid on; box on;
-        plot(approx(:),ambientAppearance(:),'.r');
+        plot(ambientPredictions(:)',squeeze(measurement.patch.ambient(:))','.r');
         xlabel('Weighed sum');
         ylabel('Simulation');
-        title(sprintf('Approx. RMSE %3.f',err));
+        title(sprintf('Approx. RMSE %.3f',err));
+        xlim([0 1]);
+        ylim([0 1]);
         
-        % Plot the quality of the approximation in camera RGB space
-        %{
-        figure;
-        hold on; grid on; box on;
-        plot(ambientAppearance',approx','o');
-        xlabel('Ambient appearance');
-        ylabel('Approximated');
-        title('RGB space');
+        
         
         % Plot the estimated ambient spectrum
-        
-        illuminantEst = flashNorm*ambientApproxWghts;
-        
-        figure;
+        figure(resFig);
+        subplot(2,3,3);
         hold on; grid on; box on;
-        plot(wave,illuminantEst);
-        legend('Estimated');
-        plot(wave,cameraResp,'--');
-        %}
+        plot(wave,ambientEst/max(ambientEst(:)),'r');
+        plot(wave,spd/max(spd(:)),'g');
+        legend('Estimated','True');
+        
         
         %% Render under the desired illuminant
         
@@ -178,59 +108,40 @@ for xx=0:0.2:1
             camDes = cameraResp'*desiredSpectrum;
             camDes = camDes/max(camDes);
             
-            cvx_begin
-            variables flashCompWeightsUnc(nChannels,1) en(1,1)
-            minimize norm( cameraResp'*(flashNorm*(flashCompWeightsUnc+ambientApproxWghts))- en*camDes)
-            subject to
-            flashCompWeightsUnc >= 0
-            en >= 0
-            cvx_end
-            
-            cvx_begin
-            variables flashCompWeights(nChannels,1) en(1,1)
-            minimize norm( cameraResp'*(flashNorm*(flashCompWeights+ambientApproxWghts))- en*camDes)
-            subject to
-            1 >= flashCompWeights >= 0
-            en >= 0
-            cvx_end
+            [ flashEst, flashWghts ] = globalComplementEst( desiredSpectrum, ambientEst, flashNorm, cameraResp, 'flashMode', true);
+            [ flashUncEst, flashUncWghts ] = globalComplementEst( desiredSpectrum, ambientEst, flashNorm, cameraResp, 'flashMode', false);
             
             
-            rendering = squeeze(channelRawLin(:,:,1));
-            for i=1:nChannels
-                rendering = rendering + flashCompWeights(i)*squeeze(channelRawLin(:,:,i+1));
-            end
+            flash = renderFlashImage(measurement.raw.ambient,measurement.raw.led,flashWghts,sensor);
+            flashUnc = renderFlashImage(measurement.raw.ambient,measurement.raw.led,flashUncWghts,sensor);
+            
+            rendering = sensorGet(flash,'volts');
             rendering = rendering/max(rendering(:));
-            
-            renderingUnc = squeeze(channelRawLin(:,:,1));
-            for i=1:nChannels
-                renderingUnc = renderingUnc + flashCompWeightsUnc(i)*squeeze(channelRawLin(:,:,i+1));
-            end
+            renderingUnc = sensorGet(flashUnc,'volts');
             renderingUnc = renderingUnc/max(renderingUnc(:));
             
             figure(resFig);
-            flashUnc = flashNorm*(flashCompWeightsUnc+ambientApproxWghts);
-            flashUncXYZ = ieXYZFromPhotons(flashUnc,wave);
+            flashUncXYZ = ieXYZFromPhotons(flashEst,wave);
             flashUncxy = flashUncXYZ(1:2)/sum(flashUncXYZ);
             plot(flashUncxy(1),flashUncxy(2),'mx','lineWidth',2,'markerSize',10);
             
-            flash = flashNorm*(flashCompWeights+ambientApproxWghts);
-            flashXYZ = ieXYZFromPhotons(flash,wave);
+            flashXYZ = ieXYZFromPhotons(flashUncEst,wave);
             flashxy = flashXYZ(1:2)/sum(flashXYZ);
             plot(flashxy(1),flashxy(2),'c+','lineWidth',2,'markerSize',10);
             
-            %% Simulate under teh desired illuminant
+            %% Simulate under the desired illuminant
             
-            scene = sceneAdjustIlluminant(scene,illuminantGet(ill,'energy'),0);
+            scene = sceneAdjustIlluminant(measurement.scenes{1},illuminantGet(ill,'energy'),0);
             scene = sceneSet(scene,'name',sprintf('Desired %iK',desiredTemp));
             
-            oi = oiCompute(oi,scene);
+            oi = oiCompute(oiCreate,scene);
             oi = oiSet(oi,'name',sprintf('Desired %iK',desiredTemp));
             % ieAddObject(oi);
             % oiWindow();
             
-            sensor = sensorCompute(sensor,oi);
+            sensor = sensorCompute(measurement.sensors{1},oi);
             sensor = sensorSet(sensor,'name', sprintf('Desired %iK',desiredTemp));
-            [cg, co] = sensorGainAndOffsetV2(0.5,oi,sensor);
+            [cg, co] = sensorGainAndOffset(0.5,oi,sensor);
             
             desiredSimulation = sensorGet(sensor,'volts')/cg;
             desiredSimulation = desiredSimulation/max(desiredSimulation(:));
@@ -238,7 +149,7 @@ for xx=0:0.2:1
             % ieAddObject(sensor);
             % sensorWindow();
             
-            ip = ipCompute(ip,sensor);
+            ip = ipCompute(ipCreate,sensor);
             ip = ipSet(ip,'name',sprintf('Desired %iK',desiredTemp));
             % ieAddObject(ip);
             % ipWindow();
@@ -254,7 +165,7 @@ for xx=0:0.2:1
             err = sqrt(mean((rendering(:) - desiredSimulation(:)).^2));
             errUnc = sqrt(mean((renderingUnc(:) - desiredSimulation(:)).^2));
             
-            legend(sprintf('Flash RMSE: %.3f',err),sprintf('Unc. RMSE: %.3f',errUnc),'location','northWest');
+            legend(sprintf('Flash %.3f',err),sprintf('Unc. %.3f',errUnc),'location','northWest');
             xlabel('Weighted sum');
             ylabel('Simulation');
             title(sprintf('Desired: %iK',desiredTemp(dd)));

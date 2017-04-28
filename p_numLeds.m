@@ -12,11 +12,10 @@ clc;
 destPath = [];
 % destPath = fullfile(slRootPath,'Figures');
 
-fName = fullfile(cmfRootPath,'Results','UniformApprox.mat');
+fName = fullfile(cmfRootPath,'Results','uniformApproxV2.mat');
 load(fName);
 
 set(groot,'defaultAxesColorOrder',[1 0 0; 0 1 0; 0 0 1]);
-
 
 %% Version 1: (Figure. 5)
 %  Fix the illuminant chromaticity, vary the number and positions of leds,
@@ -24,7 +23,7 @@ set(groot,'defaultAxesColorOrder',[1 0 0; 0 1 0; 0 0 1]);
 %  illuminant spectra estimates and illuminant chromaticity estimates.
 
 % Pick regularization strength
-for a=5
+for a=10
     
     % Pick illuminant chromaticity index
     for xx=5
@@ -77,22 +76,20 @@ for a=5
                     fName = fullfile(destPath,sprintf('%i_chromaticity_%i_%i.eps',nLEDs,xx,yy));
                     print('-depsc',fName);
                 end
+
                 
                 
+                appear = [measurement{xx,yy,:}];
+                appear = [appear(:).patch];
+                appear = [appear(:).ambient];
+                appear = appear./repmat(max(max(appear,[],1),[],3),[3 1 10*11]);
+                appear = permute(appear,[3,2,1]);
+                appear = reshape(appear,[10*11*nCameras,3]);
                 
                 
-                appear = squeeze(channelRawLin(xx,yy,:,:,:,1,:));
-                appear = reshape(appear,[10*11, 3, nCameras]);
-                approx = squeeze(channelEstLin(xx,yy,:,:,:,:,s,a));
-                approx = reshape(approx,[11*10, 3, nCameras]);
-                
-                
-                appear = permute(appear,[1 3 2]);
-                appear = reshape(appear,[10*11*nCameras, 3]);
-                
-                approx = permute(approx,[1 3 2]);
-                approx = reshape(approx,[10*11*nCameras, 3]);
-                
+                approx = squeeze(channelEstLin(xx,yy,:,:,:,s,a));
+                approx = permute(approx,[1,3,2]);
+                approx = reshape(approx,[11*10*nCameras, 3]);
                 
                 
                 figure;
@@ -143,11 +140,11 @@ for a=5
                 % error up to a multiplicative scale on the estimate (i.e.
                 % first we find a gain parameter that minimizes the error,
                 % and then compute the error).
-                cvx_begin
-                variable lsWeights(nLEDs,1)
-                minimize norm(spdTrue*gf - flashNorm(:,ledSets{s})*lsWeights)
-                subject to
-                flashNorm(:,ledSets{s})*lsWeights >= 0
+                cvx_begin quiet
+                    variable lsWeights(nLEDs,1)
+                    minimize norm(spdTrue*gf - flashNorm(:,ledSets{s})*lsWeights)
+                    subject to
+                        flashNorm(:,ledSets{s})*lsWeights >= 0
                 cvx_end
                 
                 errLs = sqrt(mean((spdTrue(:)*gf - flashNorm(:,ledSets{s})*lsWeights).^2));
@@ -243,17 +240,17 @@ for i=1:length(xxSel)
     
     
     
-    appear = squeeze(channelRawLin(xx,yy,:,:,:,1,:));
-    appear = reshape(appear,[10*11, 3, nCameras]);
-    approx = squeeze(channelEstLin(xx,yy,:,:,:,:,s,a));
-    approx = reshape(approx,[11*10, 3, nCameras]);
+    appear = [measurement{xx,yy,:}];
+    appear = [appear(:).patch];
+    appear = [appear(:).ambient];
+    appear = appear./repmat(max(max(appear,[],1),[],3),[3 1 10*11]);
+    appear = permute(appear,[3,2,1]);
+    appear = reshape(appear,[10*11*nCameras,3]);
     
     
-    appear = permute(appear,[1 3 2]);
-    appear = reshape(appear,[10*11*nCameras, 3]);
-    
-    approx = permute(approx,[1 3 2]);
-    approx = reshape(approx,[10*11*nCameras, 3]);
+    approx = squeeze(channelEstLin(xx,yy,:,:,:,s,a));
+    approx = permute(approx,[1,3,2]);
+    approx = reshape(approx,[11*10*nCameras, 3]);
     
     
     

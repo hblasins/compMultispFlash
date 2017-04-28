@@ -1,32 +1,44 @@
+% Evaluate the illuminant estimation algorithm using pixel data from
+% different number of distinct patches of uniform reflectance. To simplify
+% the analysis we pick the illuminant spectrum in terms of CIE xy
+% chromaticity, a camera model, and regularization.
+%
+% Copyright, Henryk Blaisnski 2017
+
+
 close all;
 clear all;
 clc;
 
-ledSets = {[1,2,3,4,5,6,7]};
-       
+%%
+fName = fullfile(cmfRootPath,'Results','simNatural100V2.mat');
+load(fName);
+
+% Pick number of LEDs
+ledSets = {[1,2,3,4,5,6,7]};       
 nLedSets = length(ledSets);
 
+% Illuminant chromaticity
 xChromaticities = [3];
 yChromaticities = [3];
 
+% Camera models
 cameraIDs = [3];
 
+% Number of bootstrap samples
 nDraws = 10;
 
+% Number of patches in an evaluation experiment
 numPatches = [1:2:10, 20, 30];
 nPatchSets = length(numPatches);
 
-alphaVec = [0.06]; % logspace(-3,1,10);
+alphaVec = [0.06]; 
 nAlpha = length(alphaVec);
 
-fName = fullfile(compMultispFlashRootPath,'Results','simNatural100.mat');
-load(fName);
+
 
 %% Estimate the illuminant
 %  From measurements
-
-lambda = 0;
-R = [eye(nWaves-1) zeros(nWaves-1,1)] - [zeros(nWaves-1,1) eye(nWaves-1)];
 
 channelEstLin =  cell(nX,nY,nCameras,nLedSets,nAlpha,nDraws,nPatchSets);
 wghtEst = cell(nX,nY,nCameras,nLedSets,nAlpha,nDraws,nPatchSets);
@@ -48,6 +60,8 @@ for d=1:nDraws
             ledIndices = ledSets{s};
             nLEDs = length(ledIndices);
             
+            currentFlash = flashNorm(:,ledIndices);
+            
             % Chromaticity (we only analyze a subset)
             for xx=xChromaticities 
                 for yy=yChromaticities
@@ -57,37 +71,24 @@ for d=1:nDraws
                         continue;
                     end
                     
-                    measurementSet = squeeze(channelRawLin(xx,yy,:,:,:,:,:));
-                    sz = size(measurementSet);
-                    
-                    tmp = reshape(measurementSet,[10*11, sz(3:end)]);
-                    channelRawLinSubset = tmp(patchIndices,:,:,:);
-                    
-                    
                     % Regularization
                     for a=1:nAlpha
                         % Camera model
                         for cam=cameraIDs
                             
                             
-                            ambientAppearance = channelRawLinSubset(:,:,1,cam);
-                            ledAppearance = channelRawLinSubset(:,:,ledIndices+1,cam);
+                             measurementSet = measurement{xx,yy,cam};
+                             measurementSet = [measurementSet.patch];
+                             ambient = measurementSet.ambient(:,:,patchIndices);
+                             
+                             measurementSet = [measurementSet.led];
+                             measurementSet = measurementSet(:,ledIndices,patchIndices);
+
+                            [ ambientEst, ambientWghts, ambientPredictions ] = globalAmbientEst( ambient, measurementSet, currentFlash, 'alpha', alphaVec(a) );
+
                             
-                            cvx_begin
-                                variables ambientApproxWghts(nLEDs,1)
-                            
-                                approx = 0;
-                                for i=1:nLEDs
-                                    approx = approx + ledAppearance(:,:,i)*ambientApproxWghts(i);
-                                end
-                            
-                                minimize norm(ambientAppearance(:) - approx(:)) + alphaVec(a) * norm(R*flashNorm(:,ledIndices)*ambientApproxWghts,2)
-                                subject to
-                                    flashNorm(:,ledIndices)*ambientApproxWghts >= 0
-                            cvx_end
-                            
-                            channelEstLin{xx,yy,cam,s,a,d,p} = approx;
-                            wghtEst{xx,yy,cam,s,a,d,p} = ambientApproxWghts;
+                            channelEstLin{xx,yy,cam,s,a,d,p} = ambientPredictions;
+                            wghtEst{xx,yy,cam,s,a,d,p} = ambientWghts;
                             
                         end
                     end
@@ -99,8 +100,13 @@ for d=1:nDraws
     end
 end
 
+% Save data
+fName = fullfile(cmfRootPath,'Results','numPatches.mat');
+save(fName);
+
 
 %% Compute estimation errors
+
 
 estimationError = zeros(nX,nY,cam,s,a,d,p);
 referenceError = zeros(nX,nY,nLedSets,1);
@@ -117,9 +123,6 @@ for d=1:nDraws
             
             ledIndices = ledSets{s};
             nLEDs = length(ledIndices);
-            
-            
-            
             
             % Chromaticity (we only analyze a subset)
             for xx=xChromaticities 
@@ -174,3 +177,6 @@ for d=1:nDraws
     end
 end
 
+% Save data
+fName = fullfile(cmfRootPath,'Results','numPatches.mat');
+save(fName);
