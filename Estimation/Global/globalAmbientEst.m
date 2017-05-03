@@ -15,6 +15,8 @@ nChannels = size(inputs.leds,2);
 R = [eye(nWaves-1) zeros(nWaves-1,1)] - [zeros(nWaves-1,1) eye(nWaves-1)];
 
 cvx_begin
+    cvx_precision best
+    
     variables ambientApproxWghts(nChannels,1)
 
     approx = 0;

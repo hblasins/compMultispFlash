@@ -41,7 +41,7 @@ sensor = sensorCreate('bayer (rggb)');
 sensor = sensorSet(sensor,'wave',wave);
 sensor = sensorSet(sensor,'noise flag',0);
 
-fName = fullfile(isetRootPath,'data','sensor','colorfilters','Canon1DMarkIII');
+fName = fullfile(isetRootPath,'data','sensor','colorfilters','NikonD1.mat');
 cameraResp = ieReadSpectra(fName,wave);
 cameraResp(isnan(cameraResp)) = 0;
 sensor = sensorSet(sensor,'filter transmissivities',cameraResp);

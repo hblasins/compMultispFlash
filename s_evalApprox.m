@@ -49,13 +49,12 @@ nYVals = length(yVals);
 
 % Define LED spectra
 fName = fullfile(cmfRootPath,'Parameters','ximeaLights');
-flashSpd = ieReadSpectra(fName,wave);
-flashSpd = Energy2Quanta(wave,flashSpd);
-flashSpdNorm = flashSpd/max(flashSpd(:));
+flash = ieReadSpectra(fName,wave);
+flash = Energy2Quanta(wave,flash);
+flashNorm = flash/max(flash(:));
 
-nLEDs = size(flashSpd,2);
+nLEDs = size(flash,2);
 nLights = nLEDs + 1;
-nFilters = 3;
 
 % Create a sensor
 sensor = sensorCreate('bayer (rggb)');
@@ -79,34 +78,37 @@ spectralApproxWeights = zeros(nXVals,nYVals,nCameras,nLEDs);
 complementWeightsConstr = zeros(nXVals,nYVals,nCameras,nDesiredIlluminants,nLEDs);
 complementWeightsUnc = zeros(nXVals,nYVals,nCameras,nDesiredIlluminants,nLEDs);
 
+measurement = cell(nXVals,nYVals,nCameras);
 
 for cc=1:nCameras
+    
+    fName = fullfile(isetRootPath,'data','sensor','colorfilters',cameras{cc});
+    cameraResp = ieReadColorFilter(wave,fName);
+    cameraResp(isnan(cameraResp)) = 0;
+    nFilters = size(cameraResp,2);
+    sensor = sensorSet(sensor,'filter spectra',cameraResp);
     
     for xx=1:nXVals
         for yy=1:nYVals
             
-            fName = fullfile(isetRootPath,'data','sensor','colorfilters',cameras{cc});
-            cameraResp = ieReadColorFilter(wave,fName);
-            cameraResp(isnan(cameraResp)) = 0;
-            nFilters = size(cameraResp,2);
-            sensor = sensorSet(sensor,'filter spectra',cameraResp);
-
             
+            spd = xy2Spectrum(xVals(xx),yVals(yy),wave(:));
             
-            measVals = zeros(nFilters,nLights,nSamples);
-            measLedVals = zeros(nFilters,nLights,nSamples);
-            measValsLin = zeros(nFilters,nLights,nSamples);
-            
-            ill = illuminantCreate('D65',wave);
-            ambientEnergy = 100*max(illuminantGet(ill,'energy'))*xy2Spectrum(xVals(xx),yVals(yy),wave(:));
-            if sum(isnan(ambientEnergy)) > 0,
+            if sum(isnan(spd)) > 0,
                 continue;
             end
+            
+            
+            measurement{xx,yy,cc} = renderData(wave, sensor, spd, flashNorm, 'compact',true);
+            
+            
+            
+            
             
             %% Camera capture simulation
             %  Simulate the appearance of objects captured under ambient
             %  and under ambient+individual led.
-            
+            %{
             for i=1:nLights
 
                 % Scene
@@ -114,7 +116,7 @@ for cc=1:nCameras
                 if i==1
                     illEnergy = ambientEnergy;
                 else
-                    illEnergy = ambientEnergy + Quanta2Energy(wave(:),flashSpd(:,i-1))';
+                    illEnergy = ambientEnergy + Quanta2Energy(wave(:),flash(:,i-1))';
                 end
                 scene = sceneAdjustIlluminant(scene,illEnergy',0);
                 
@@ -173,11 +175,12 @@ for cc=1:nCameras
             measValsLin = measValsLin/max(measValsLin(:));
             
             measPixelVals(xx,yy,cc,:,:,:) = measValsLin;
-            
+            %}
             %% Estimate LED weights as seen through the camera
             %  that best approximate the ambient illuminant image. This is
             %  the estimation algorithm idea we propose in the paper.
             
+            %{
             cvx_begin
                 variables ambientApproxWghts(nLEDs,1)
             
@@ -190,6 +193,10 @@ for cc=1:nCameras
                 subject to
                     flashSpdNorm*ambientApproxWghts >= 0
             cvx_end
+            %}
+            
+            [ ambientEst, ambientWghts, ambientPredictions ] = globalAmbientEst( measurement{xx,yy,cc}.patch.ambient, measurement{xx,yy,cc}.patch.led, flashNorm, 'alpha',0.1 );
+
             
             
             %% Estimate LED weights measured spectrally
@@ -197,7 +204,7 @@ for cc=1:nCameras
             %  we try to optimize the led weights to best approximate this
             %  spectrum.
             
-            illPhotons = Energy2Quanta(wave,illEnergy);
+            illPhotons = Energy2Quanta(wave,ambientEnergy);
             illPhotons = illPhotons/max(illPhotons);
             cvx_begin
                 variables ambientSpectralApproxWghts(nLEDs,1)
@@ -217,6 +224,13 @@ for cc=1:nCameras
                 
                 desiredIll = desiredIlluminants{dd};
                 
+                [ flashEst, flashWghts ] = globalComplementEst( desiredIll, ambientEst, flashNorm, cameraResp,...
+                            'flashMode',true);
+                        
+                [ flashCompEst, flashCompWghts ] = globalComplementEst( desiredIll, ambientEst, flashNorm, cameraResp,...
+                            'flashMode',false);
+                
+                %{
                 cvx_begin
                     variables ambientComplementWghtsConstr(nLEDs,1) scale(1,1)
 
@@ -234,29 +248,22 @@ for cc=1:nCameras
                         ambientComplementWghtsUnc >= 0
                         scale >= 0
                 cvx_end
-            
-                complementWeightsConstr(xx,yy,cc,dd,:) = ambientComplementWghtsConstr;
-                complementWeightsUnc(xx,yy,cc,dd,:) = ambientComplementWghtsUnc;
-            
-                ambientComplementConstr = flashSpdNorm*(ambientApproxWghts + ambientComplementWghtsConstr);
-                ambientComplementConstr = ambientComplementConstr/max(ambientComplementConstr);
-            
-                ambientComplementUnc = flashSpdNorm*(ambientApproxWghts + ambientComplementWghtsUnc);
-                ambientComplementUnc = ambientComplementUnc/max(ambientComplementUnc);
+                %}
+                            
+                complementWeightsConstr(xx,yy,cc,dd,:) = flashWghts;
+                complementWeightsUnc(xx,yy,cc,dd,:) = flashCompWghts;
                 
-                ambientComplementConstrXYZ(xx,yy,cc,dd,:) = ieXYZFromPhotons(ambientComplementConstr,wave);
-                ambientComplementUncXYZ(xx,yy,cc,dd,:) = ieXYZFromPhotons(ambientComplementUnc,wave);
+                ambientComplementConstrXYZ(xx,yy,cc,dd,:) = ieXYZFromPhotons(flashEst,wave);
+                ambientComplementUncXYZ(xx,yy,cc,dd,:) = ieXYZFromPhotons(flashCompEst,wave);
                 
             end
             
             meas = squeeze(measValsLin(:,1,:));
-            approxPixelVals(xx,yy,cc,:,:,:) = approx;
+            approxPixelVals(xx,yy,cc,:,:,:) = ambientPredictions;
             
-            approxWeights(xx,yy,cc,:) = ambientApproxWghts;
+            approxWeights(xx,yy,cc,:) = ambientWghts;
             spectralApproxWeights(xx,yy,cc,:) = ambientSpectralApproxWghts;            
             
-            ambientEst = flashSpd*ambientApproxWghts;
-            ambientEst = ambientEst/max(ambientEst);
             
             ambientSpectrum = Energy2Quanta(wave,ambientEnergy);
             ambientSpectrum = ambientSpectrum/max(ambientSpectrum);
@@ -270,7 +277,7 @@ for cc=1:nCameras
     end
 end
 
-fName = fullfile(slRootPath,'Results','evalApprox.mat');
+fName = fullfile(slRootPath,'Results','evalApproxV2.mat');
 save(fName);
 
 

@@ -58,7 +58,7 @@ ambientDeltaE = zeros(24,5);
 matchingDeltaE = zeros(24,5);
 complementDeltaE = zeros(24,5);
 
-for jj=1:1 %4
+for jj=4
     
     switch jj
         case 1

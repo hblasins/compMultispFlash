@@ -38,7 +38,7 @@ for a=1:nAlpha
                 continue,
             end
             
-            figure;
+            % figure;
             for cam=1:nCameras
                 
                 currentMeas = measurement{xx,yy,cam};
@@ -48,19 +48,29 @@ for a=1:nAlpha
                     nLEDs = length(ledSets{s});
                     currentFlash = flashNorm(:,ledSets{s});
                     
-                    ambient = currentMeas.patch.ambient/max(currentMeas.patch.ambient(:));
-                    data = currentMeas.patch.led/max(currentMeas.patch.led(:));
+                    ambient = currentMeas.patch.ambient;
+                    data = currentMeas.patch.led(:,ledSets{s},:);
+                    
+                    ambient = ambient/max(ambient(:));
+                    data = data/max(data(:));
+                    
                     
                     [ ambientEst, ambientWghts, ambientPredictions ] = globalAmbientEst( ambient, data, currentFlash, 'alpha', alphaVec(a) );
                     
+                    %{
+                    subplot(2,nLedSets,s);
+                    hold on; grid on; box on;
+                    plot(wave,ambientEst);
+                    xlabel('Wavelength, nm');
+                    title(sprintf('%i LEDs',nLEDs));
+                                        
                     
-                    subplot(1,nLedSets,s);
+                    subplot(2,nLedSets,s+nLedSets);
                     hold on; grid on; box on;
                     plot(squeeze(ambient)',ambientPredictions','.');
                     xlabel('Simulated');
                     ylabel('Approximation');
-                    title(sprintf('%i LEDs',nLEDs));
-                    
+                    %}
                     
                     channelEstLin(xx,yy,:,:,cam,s,a) = ambientPredictions';
                     wghtEst(xx,yy,1:nLEDs,cam,s,a) = ambientWghts;
@@ -72,7 +82,7 @@ for a=1:nAlpha
     end
     
     % Save data
-    fName = fullfile(cmfRootPath,'Results','uniformApproxV2.mat');
+    fName = fullfile(cmfRootPath,'Results','uniformApproxV3.mat');
     save(fName);
     
 end

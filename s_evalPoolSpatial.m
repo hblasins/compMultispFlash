@@ -1,3 +1,10 @@
+% This is a highly experimental script using local illuminant estimation
+% and global spatial smoothness
+%
+% USE AT YOUR OWN RISK
+%
+% Copyright, Henryk Blasinski 2017
+
 close all;
 clear all;
 clc;

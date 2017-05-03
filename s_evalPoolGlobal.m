@@ -17,6 +17,7 @@ nWaves = length(wave);
 
 desiredIll = 'D65';
 
+% If the resDir is empty, no fiures will be saved.
 % resDir = fullfile(cmfRootPath,'..','Figures');
 resDir = [];
 
@@ -154,7 +155,8 @@ end
 
 
 %% Save data
-destDir = fullfile(cmfRootPath,'..','Figures');
+% destDir = fullfile(cmfRootPath,'..','Figures');
+destDir = [];
 ieImages = vcGetObjects('vcimage');
 
 for i=1:length(ieImages)

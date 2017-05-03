@@ -64,7 +64,8 @@ ois = cell(nChannels,1);
      sensors{i} = sensorSet(sensors{i},'name',name);
      sensors{i} = sensorCompute(sensors{i},ois{i});
      
-     cg = sensorGainAndOffset(0.5,ois{i},sensors{i});
+     % cg = sensorGainAndOffset(0.5,ois{i},sensors{i});
+     cg = sensorGet(sensors{i},'exposure time');
      
      if i==1
          tmp = sensorGet(sensors{i},'volts');

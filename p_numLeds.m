@@ -12,7 +12,7 @@ clc;
 destPath = [];
 % destPath = fullfile(slRootPath,'Figures');
 
-fName = fullfile(cmfRootPath,'Results','uniformApproxV2.mat');
+fName = fullfile(cmfRootPath,'Results','uniformApproxV3.mat');
 load(fName);
 
 set(groot,'defaultAxesColorOrder',[1 0 0; 0 1 0; 0 0 1]);
@@ -23,7 +23,7 @@ set(groot,'defaultAxesColorOrder',[1 0 0; 0 1 0; 0 0 1]);
 %  illuminant spectra estimates and illuminant chromaticity estimates.
 
 % Pick regularization strength
-for a=10
+for a=1
     
     % Pick illuminant chromaticity index
     for xx=5

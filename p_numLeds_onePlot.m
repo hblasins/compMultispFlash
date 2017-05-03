@@ -9,7 +9,7 @@ clc;
 
 % Provide non-empty destPath to save figure files.
 destPath = [];
-% destPath = fullfile(slRootPath,'Figures');
+% destPath = fullfile(cmfRootPath,'..','Figures');
 
 fName = fullfile(cmfRootPath,'Results','uniformApproxV3.mat');
 load(fName);
@@ -24,8 +24,9 @@ set(groot,'defaultAxesColorOrder',[1 0 0; 0 1 0; 0 0 1]);
 % Pick regularization strength
 figure;
 set(gcf,'Position',[55 183 1373 912]);
+set(gcf,'PaperPosition',[1 1 13 9]);
 
-for a=1
+for a=10
     
     % Pick illuminant chromaticity index
     for xx=5
@@ -139,6 +140,10 @@ for a=1
     end
 end
 
+if ~isempty(destPath)
+    fName = fullfile(destPath,'variation_nLEDs.eps');
+    print('-depsc',fName);
+end
 
 
 
@@ -158,6 +163,7 @@ s = 5; % The fifth led set containing 7 LEDs
 
 figure;
 set(gcf,'Position',[55 183 1373 912]);
+set(gcf,'PaperPosition',[1 1 13 9]);
 
 for i=1:length(xxSel)
     xx=xxSel(i);
@@ -188,7 +194,8 @@ for i=1:length(xxSel)
     hold on; grid on; box on;
     chromaticityPlot([],'gray',256,false);
     plot(spdxy(1),spdxy(2),'rd','lineWidth',2,'markerSize',10);
-    
+    title(sprintf('xy = (%.2f,%.2f)',xVec(xx),yVec(yy)));
+
     
     for j=1:nLEDs
         xyz = ieXYZFromPhotons(flashSpd(:,ledSets{s}(j)),wave);
@@ -266,5 +273,8 @@ for i=1:length(xxSel)
     
 end
 
-
+if ~isempty(destPath)
+    fName = fullfile(destPath,'variation_Chromaticity.eps');
+    print('-depsc',fName);
+end
 
