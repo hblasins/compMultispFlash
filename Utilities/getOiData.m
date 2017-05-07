@@ -20,6 +20,9 @@ switch inputs.target
     case 'Macbeth'
         path = fullfile(inputs.rtbResultFolder,'Macbeth','renderings','PBRT');
         scale = 10^14;
+    case 'Objects'
+        path = fullfile(inputs.rtbResultFolder,'Objects','renderings','PBRT');
+        scale = 10^14;
     otherwise
         path = fullfile(inputs.rtbResultFolder,sprintf('Coral-%s',inputs.target),'renderings','PBRT');
         scale = 10^10;
@@ -30,9 +33,13 @@ end
 oi = cell(inputs.nLeds+1,1);  
 for i=1:inputs.nLeds+1
     
-    
-    fName = fullfile(path,sprintf('%s_water_ambient_LED%i_%i_%i_%.3f_%.3f_%.3f_%.3f.mat',inputs.target,i-1,inputs.targetDistance,inputs.depth,inputs.chlConc,inputs.cdomConc,...
-            inputs.smallPartConc,inputs.largePartConc));
+    switch inputs.target
+        case 'Objects'
+            fName = fullfile(path,sprintf('Scene_ambient_LED%02i.mat',i-1));
+        otherwise
+            fName = fullfile(path,sprintf('%s_water_ambient_LED%i_%i_%i_%.3f_%.3f_%.3f_%.3f.mat',inputs.target,i-1,inputs.targetDistance,inputs.depth,inputs.chlConc,inputs.cdomConc,...
+                inputs.smallPartConc,inputs.largePartConc));
+    end
 
     try
         radianceData = load(fName);
@@ -58,6 +65,8 @@ end
 %% Now get the reference data to compare to
 
 referenceOi = cell(inputs.nLeds+2,1);
+
+if strcmp(inputs.target,'Objects') == 0
 for i=1:inputs.nLeds+2
    
     if i<=inputs.nLeds
@@ -94,6 +103,7 @@ for i=1:inputs.nLeds+2
     referenceOi{i} = BuildOI(radianceData.multispectralImage/radianceData.radiometricScaleFactor*scale, [], oiParams);
     referenceOi{i} = oiSet(referenceOi{i},'name',name);
     
+end
 end
 
 

@@ -29,8 +29,8 @@ desiredIll = 'D65';
 capturePhotos = false;
 
 % Save plots and figures if the path is not empty.
-% destDir = fullfile(cmfRootPath,'..','Figures');
-resDir = [];
+destDir = fullfile(cmfRootPath,'..','Figures');
+% resDir = [];
 
 
 % Create base sensor model
@@ -58,7 +58,7 @@ ambientDeltaE = zeros(24,5);
 matchingDeltaE = zeros(24,5);
 complementDeltaE = zeros(24,5);
 
-for jj=4
+for jj=3
     
     switch jj
         case 1
@@ -147,11 +147,23 @@ for jj=4
     [ flashEst, flashWghts ] = globalComplementEst( desiredSpectrum, ambientEst, ledCubeLeds, cameraResp,...
         'flashMode',true);
     
+    
+    %% Best approximation to the ambient
+    
+    cvx_begin
+        variable optWghts(nLEDs,1)
+        minimize norm(ledCubeLeds*optWghts - ambientSpectrum*max(ambientEst),2)
+        subject to
+            ledCubeLeds*optWghts >= 0
+    cvx_end
+    
+    
     % Plot the illuminant spectra
     figure;
     hold on; grid on; box on;
     plot(wave,ambientEst,'LineWidth',2);
     plot(wave,ambientSpectrum*max(ambientEst),'--','LineWidth',2);
+    plot(wave,ledCubeLeds*optWghts,'-.','LineWidth',2);
     plot(wave,ledCubeLeds*flashWghts,'LineWidth',2);
     xlabel('Wavelength, nm','Interpreter','Latex','FontSize',6);
     set(gca,'TickLabelInterpreter','Latex');

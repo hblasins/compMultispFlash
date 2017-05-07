@@ -25,8 +25,11 @@ nLeds = size(ledSpectra,2);
 
 % Simulate sensor
 [ measurement.sensors, measurement.ips, measurement.raw.data, measurement.demosaiced.data, measurement.patch.data ] = getSensorData( sensor, oi);
-[ reference.sensors, reference.ips, reference.raw.data, reference.demosaiced.data, reference.patch.data ] = getSensorData( sensor, referenceOi);
 
+reference = [];
+if strcmp(p.Results.target,'Objects') == 0
+    [ reference.sensors, reference.ips, reference.raw.data, reference.demosaiced.data, reference.patch.data ] = getSensorData( sensor, referenceOi);
+end
 
 measurement.demosaiced.data = measurement.demosaiced.data/max(measurement.demosaiced.data(:));
 measurement.patch.data = measurement.patch.data/max(measurement.patch.data(:));

@@ -33,7 +33,9 @@ for i=1:nOis
     [mVals, ~, ~, cp] = macbethSelect(sensors{i},1,1,cp);
     patchData(:,i,:) = cell2mat(cellfun(@(x) nanmean(x)',mVals,'UniformOutput',false));
         
-    [cg, co] = sensorGainAndOffset(0.5,oi{i},sensors{i});
+    %[cg, co] = sensorGainAndOffset(0.5,oi{i},sensors{i});
+    cg = sensorGet(sensors{i},'exposure time');
+    
     rawData(:,:,i) = sensorGet(sensors{i},'volts')/cg;
     patchData(:,i,:) = patchData(:,i,:)/cg;
         

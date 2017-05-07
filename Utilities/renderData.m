@@ -47,7 +47,7 @@ ois = cell(nChannels,1);
      scenes{i} = sceneAdjustIlluminant(scenes{i},Quanta2Energy(wave,illSpd),0);
      
      ieAddObject(scenes{i});
-     sceneWindow;
+     % sceneWindow();
      
      %% OI
      
@@ -55,7 +55,7 @@ ois = cell(nChannels,1);
      ois{i} = oiSet(ois{i},'name',name);
      
      ieAddObject(ois{i});
-     oiWindow();
+     % oiWindow();
      
      %% Sensor
      sensors{i} = sensorSet(sensor,'pixel size', oiGet(ois{i},'spatial resolution'));
@@ -89,7 +89,7 @@ ois = cell(nChannels,1);
      sampleData(:,i,:) = tmp/cg;
      
      vcAddObject(sensors{i});
-     sensorWindow();
+     % sensorWindow();
      
      %% ISP
      
@@ -100,7 +100,7 @@ ois = cell(nChannels,1);
      demosaicedData(:,:,:,i) = ipGet(ips{i},'sensor channels')/cg;
      
      ieAddObject(ips{i});
-     ipWindow();
+     % ipWindow();
      
  end
 
