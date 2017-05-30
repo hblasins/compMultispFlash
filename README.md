@@ -4,11 +4,11 @@ This repository contains a Matlab implementation of the Computational Multispect
 
 Please use the following citation if you are using this code for your projects and/or research.
     ```@inproceedings{blasinski2017cmf,
-        title={Computational Multispectral Flash},
-        author={Blasinski, Henryk and Farrell, Joyce},
-        booktitle={IEEE International Conference on Computational Photography, ICCP},
-        year={2017},
-        organization={IEEE}
+    title={Computational Multispectral Flash},
+    author={Blasinski, Henryk and Farrell, Joyce},
+    booktitle={IEEE International Conference on Computational Photography, ICCP},
+    year={2017},
+    organization={IEEE}
      }```
 
 ## Dependencies:
