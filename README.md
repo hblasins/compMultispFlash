@@ -3,13 +3,15 @@
 This repository contains a Matlab implementation of the Computational Multispectral Flash desribed in H. Blasinski and J. Farrell; 'Computational Multispectral Flash,' ICCP 2017.
 
 Please use the following citation if you are using this code for your projects and/or research.
-    ```@inproceedings{blasinski2017cmf,
-    title={Computational Multispectral Flash},
-    author={Blasinski, Henryk and Farrell, Joyce},
-    booktitle={IEEE International Conference on Computational Photography, ICCP},
-    year={2017},
-    organization={IEEE}
-     }```
+    ```
+    @inproceedings{blasinski2017cmf,
+        title={Computational Multispectral Flash},
+        author={Blasinski, Henryk and Farrell, Joyce},
+        booktitle={IEEE International Conference on Computational Photography, ICCP},
+        year={2017},
+        organization={IEEE}
+     }
+     ```
 
 ## Dependencies:
 1. ISET - Image Systems Engineering Toolbox 
