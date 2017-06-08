@@ -34,10 +34,9 @@ scenes.
 models for research purposes. We don't own the copyrights, so you will need
 to make a separate request.
 
-### Sample data
+### Sample Data
 Sample input data (images) as well as intermediate computation steps can be 
-downloaded from the Stanford Digital Repository:
-https://purl.stanford.edu/pd601pk8606
+downloaded from the [Stanford Digital Repository](https://purl.stanford.edu/pd601pk8606)
 
 
 
