@@ -39,7 +39,7 @@ waterDepth = 10000;
 smallPart = 0.0;
 largePart = 0.0;
 
-target = 'Objects'; %or 'Macbeth' or 'Table' or 'Acropora' or 'Objects'
+target = 'Table'; %or 'Macbeth' or 'Table' or 'Acropora' or 'Objects'
 
 fName = fullfile(cmfRootPath,'Parameters','ximeaLights');
 ledSpectra = ieReadSpectra(fName,wave);
