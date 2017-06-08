@@ -26,6 +26,7 @@ request an educational version).
 ### Optional
 These tools are necessary if you want to synthesize your own underwater scenes
 (or re-synthesize the scenes we used).
+
 3. [RenderToolbox4](http://rendertoolbox.org) - A set of Matlab functions to render images of complex 
 scenes. 
 4. Coral models - 3D meshes of different corals. We used models from 
